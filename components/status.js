@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { Platform, StatusBar, StyleSheet, View, Text } from "react-native";
+import React, { useEffect, useState, useRef } from "react";
+import { Platform, StatusBar, StyleSheet, View, Text, Animated } from "react-native";
 import Constants from "expo-constants";
 import NetInfo from "@react-native-community/netinfo";
 
 export default function Status() {
   const [info, setInfo] = useState(null);
+  const animation = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     let isMounted = true;
@@ -28,26 +29,53 @@ export default function Status() {
     };
   }, []);
 
+  useEffect(() => {
+    const target = info === "none" ? 0 : 1;
+    Animated.timing(animation, {
+      toValue: target,
+      duration: 350,
+      useNativeDriver: false,
+    }).start();
+  }, [animation, info]);
+
   const isConnected = info !== "none";
   const backgroundColor = isConnected ? "#FFFFFF" : "#FF3B30";
+  const statusBackground = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#FF3B30", "#FFFFFF"],
+  });
+  const offlineOpacity = animation.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 0.25, 0],
+  });
+  const offlineTranslateY = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -16],
+  });
 
   return (
     <>
-      <View style={[styles.status, { backgroundColor }]}>
+      <Animated.View style={[styles.status, { backgroundColor: statusBackground }]}> 
         <StatusBar
           translucent
           backgroundColor={backgroundColor}
           barStyle={isConnected ? "dark-content" : "light-content"}
-          animated={false}
+          animated
         />
-      </View>
-      {!isConnected && (
-        <View style={styles.messageContainer} pointerEvents="none">
+      </Animated.View>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.messageContainer,
+          { opacity: offlineOpacity, transform: [{ translateY: offlineTranslateY }] },
+        ]}
+      >
+        {!isConnected && (
           <View style={styles.bubble}>
             <Text style={styles.message}>No Network Connection!</Text>
           </View>
-        </View>
-      )}
+        )}
+      </Animated.View>
     </>
   );
 }
